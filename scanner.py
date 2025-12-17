@@ -1,6 +1,25 @@
 import socket #para conversar com a placa de rede
 from datetime import datetime 
 import sys 
+import concurrent.futures
+
+#Função para ser executada por cada thread
+def scan_port(ip_alvo, porta):
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(0.5)
+
+        resultado = s.connect_ex((ip_alvo, porta))
+        s.close()
+        
+        if resultado == 0:
+            print(f"[+] Porta {porta} está ABERTA")
+
+    except:
+        pass
+
+    return None
+        
 
 def run_scanner():
     print("-" * 60)
@@ -38,22 +57,17 @@ def run_scanner():
     print("\n" + "-" * 60)
     print(f"Iniciando Scan no alvo: {alvo} ({ip_alvo})")
     print(f"Intervalo de Portas: {porta_inicial} até {porta_final}")
+    print(f"Threads simultâneas: 50")
     print(f"Horário de início: {datetime.now()}")
     print("-" * 60)
 
+    inicio_tempo = datetime.now()
+
     try:
-        for porta in range(porta_inicial, porta_final + 1):
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.settimeout(0.5)
-
-            resultado = s.connect_ex((ip_alvo, porta))
-            
-            if resultado == 0:
-                print(f"Porta {porta} está aberta!")
-            else:
-                pass
-
-            s.close()
+        # ThreadPoolExecutor gerencia as threads
+        with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
+            for porta in range(porta_inicial, porta_final + 1):
+                executor.submit(scan_port, ip_alvo, porta)
 
     except KeyboardInterrupt:
         print("\n\n[!] Scan interrompido pelo usuário (Ctrl+C).")
@@ -62,8 +76,11 @@ def run_scanner():
         print("\n[!] Erro de conexão com o servidor.")
         sys.exit()
 
+    fim_tempo = datetime.now()
+    duracao = fim_tempo - inicio_tempo
+
     print("-" * 60)
-    print("Scan finalizado com sucesso!")
+    print(f"Scan finalizado com sucesso em {duracao}.")
 
 if __name__ == "__main__":
     run_scanner()
